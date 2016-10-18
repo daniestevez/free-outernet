@@ -55,4 +55,5 @@ class TimeService:
           packet (LDP): the LDP time packet
         """
         timestamp = datetime.datetime.utcfromtimestamp(struct.unpack('>I', packet.payload[10:14])[0])
-        print('[Time service] Received time packet: {} UTC'.format(timestamp))
+        groundstation = str(packet.payload[:4], 'utf-8')
+        print('[Time service] Received time packet from {}: {} UTC'.format(groundstation,timestamp))
