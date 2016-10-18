@@ -17,9 +17,11 @@ time service.
 All this software is the result of a reverse engineering effort, since Outernet
 does not publish any documentation for the protocols they use.
 
-Currently you can use `outernet_kiss_file.py` with a KISS file recorded by
-gr-outernet to extract the files broadcast by the Outernet file service and read
-the time packets.
+You can use `free-outernet.py` to receive UDP packets in real-time from
+gr-outernet or with a KISS file recorded previously by
+gr-outernet. `free-outernet.py` recovers the files that are transmitted by
+Outernet and prints the time packets. It also prints some interesting debug info.
+
 
 Things that are not implemented/supported yet:
 
@@ -32,8 +34,6 @@ Things that are not implemented/supported yet:
    that file announcements are signed.
  * Some weird Outernet frames which I do not know what they do. They do not seem
    to do something very important, though.
- * Real time decoding, by getting frames from gr-outernet by UDP. This is useful
-   and easy to implement, and it will be implemented in the future.
  * Using the time packets to set the system time. I do not know how useful it
    is for most people. `ondd` does it, because it is designed to run standanlone
    without internet conetivity. If you have Internet connectivity it is much
