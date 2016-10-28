@@ -195,6 +195,12 @@ class File:
             else:
                 fec = bytes().join(self.__fec_blocks)
                 print('Length of FEC data: {} bytes; File size: {} bytes'.format(len(fec), self.size))
+            print('1st LDPC block debug')
+            print('file:')
+            contents = bytes().join(self.__blocks)
+            print([contents[i] for i in range(0, len(contents), 242)])
+            print('check bytes:')
+            print([fec[i] for i in range(0, len(fec), 242)])
             print('--------------------------------------------------------------------')
         
         if None in self.__blocks:
