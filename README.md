@@ -46,6 +46,10 @@ Things that are not implemented/supported yet:
    automatically. This is easy to implement, but it is low on my priority list,
    as it is very easy to do this manually.
 
+## Sample KISS files
+
+You can use some [sample KISS files](https://drive.google.com/open?id=0B2pPGQkeEAfdbXFZNThCb1BLMzg) for testing.
+
 ## What is this LDPC decoding thing?
 
 LDPC is the only important thing that `ondd` does and that is not implemented in
