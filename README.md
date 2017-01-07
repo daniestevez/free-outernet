@@ -46,6 +46,12 @@ Things that are not implemented/supported yet:
    automatically. This is easy to implement, but it is low on my priority list,
    as it is very easy to do this manually.
 
+## Dependencies
+
+To install all dependencies just run: `pip install -r requirements.txt`
+
+ * [zfec](https://pypi.python.org/pypi/zfec)
+
 ## Sample KISS files
 
 You can use some [sample KISS files](https://drive.google.com/open?id=0B2pPGQkeEAfdbXFZNThCb1BLMzg) for testing.

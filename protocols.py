@@ -26,6 +26,7 @@ __email__ = 'daniel@destevez.net'
 
 
 import struct
+import zfec
 
 class OP:
     """
@@ -45,14 +46,80 @@ class OP:
 
         Throws ValueError if packet is malformed
         """
-        
+
         header = data[:self.__header_len]
         if len(header) < self.__header_len:
             raise ValueError('Malformed OP packet: too short')
 
-        self.length, self.fragmentation, self.carousel_id, \
-          self.last_fragment, self.fragment_number = struct.unpack('>HBBBB', header)
+        self.length, self.fragment_type, self.carousel_id, \
+          self.last_fragment, self.fragment_index = struct.unpack('>HBBBB', header)
         self.payload = data[self.__header_len : self.__header_len + self.length - 4]
+
+class PartialLDP:
+    """
+    Fragmented LDP packet
+
+    A LDP packet which has not yet been completely received.
+    """
+    def __init__(self):
+        self.reset()
+
+    """
+    Reset the internal state
+    """
+    def reset(self):
+        self.__fragments = {}
+        self.__frag_recv = 0
+        self.__fec_recv = 0
+        self.frag_size = None
+        self.frag_count = None
+        self.fec_count = None
+        self.next_index = 0
+
+    """
+    Push a data block
+
+    Args:
+      index (int): the index of the fragment
+      payload (bytes): the actual data
+    """
+    def push_data(self, index, payload):
+        if index in self.__fragments:
+            return
+        self.__fragments[index] = payload
+        self.__frag_recv += 1
+
+    """
+    Push a FEC block
+
+    Args:
+      index (int): the index of the FEC block
+      payload (bytes): the actual FEC data
+    """
+    def push_fec(self, index, payload):
+        if not self.frag_count or (self.frag_count + index) in self.__fragments:
+            return
+        self.__fragments[self.frag_count + index] = payload
+        self.__fec_recv += 1
+
+    """
+    Indicates whether a reconstruction is possible
+    """
+    @property
+    def complete(self):
+        return self.frag_count and self.__fec_recv + self.__frag_recv >= self.frag_count
+
+    """
+    Decode the packet
+    """
+    def decode(self):
+        if self.__frag_recv == self.frag_count: # No error FEC decoding necessary
+            return b''.join([self.__fragments[s] for s in range(self.frag_count)])
+        k = self.frag_count
+        n = k + self.fec_count
+        decoder = zfec.Decoder(k, n)
+        sharenums = list(self.__fragments.keys())
+        return b''.join(decoder.decode([self.__fragments[s] for s in sharenums], sharenums))
 
 class OPDefragmenter:
     """
@@ -66,40 +133,50 @@ class OPDefragmenter:
         """
         Initialize defragmenter
         """
-        self.__payload = bytes()
-        self.__last_fragment = -1
-        self.__previous_fragment = -1
+        self.__pending = {}
 
     def push(self, packet):
         """
         Push new packet into defragmenter
 
-        Returns an the palyoad (bytes) if defragmentation is succesful,
+        Returns a payload (bytes) if defragmentation is succesful,
         None otherwise
 
         Args:
           packet (OP): Packet to push
         """
-        if packet.fragment_number != self.__previous_fragment + 1:
-            # packet lost
-            self.__init__()
+        ldp = self.__pending.get(packet.carousel_id)
+        if not ldp:
+            ldp = PartialLDP()
+            self.__pending[packet.carousel_id] = ldp
 
-        if packet.fragment_number == 0:
-            # first fragment
-            self.__init__()
-            self.__last_fragment = packet.last_fragment
-        
-        if packet.last_fragment == self.__last_fragment and \
-            packet.fragment_number == self.__previous_fragment + 1:
-            # fragment ok
-            self.__payload = self.__payload + packet.payload
-            self.__previous_fragment = packet.fragment_number
-
-        if self.__payload and self.__previous_fragment == self.__last_fragment:
-            # packet complete
-            payload = self.__payload
-            self.__init__()
-            return payload
+        if packet.fragment_type == 0x3c or packet.fragment_type == 0xc3:
+            if packet.fragment_type == 0x3c and packet.fragment_index == 0: # TODO Verify correctness
+                return packet.payload
+            if packet.fragment_index < ldp.next_index:
+                ldp.reset()
+            if not ldp.frag_size:
+                ldp.frag_size = packet.length - 4
+            if not ldp.frag_count:
+                ldp.frag_count = packet.last_fragment + 1
+            ldp.next_index = packet.fragment_index + 1
+            ldp.push_data(packet.fragment_index, packet.payload + b'\xff' * (ldp.frag_size - len(packet.payload)))
+            if packet.fragment_type == 0x3c and ldp.complete:
+                decoded = ldp.decode()
+                ldp.reset()
+                return decoded
+        elif packet.fragment_type == 0x69:
+            if not ldp.frag_size:
+                return
+            if not ldp.fec_count:
+                ldp.fec_count = packet.last_fragment + 1
+            ldp.push_fec(packet.fragment_index, packet.payload)
+            if ldp.complete:
+                decoded = ldp.decode()
+                ldp.reset()
+                return decoded
+        else:
+            print('Unsupported fragment type: {:02x}'.format(packet.fragment_type))
 
 class LDP:
     """
