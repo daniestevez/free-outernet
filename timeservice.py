@@ -54,6 +54,18 @@ class TimeService:
         Args:
           packet (LDP): the LDP time packet
         """
-        timestamp = datetime.datetime.utcfromtimestamp(struct.unpack('>I', packet.payload[10:14])[0])
-        groundstation = str(packet.payload[:4], 'utf-8')
-        print('[Time service] Received time packet from {}: {} UTC'.format(groundstation,timestamp))
+        payload = packet.payload
+        while len(payload) > 2:
+            desc_id, desc_len = struct.unpack('>BB', payload[0:2])
+            if desc_len > len(payload) - 2:
+                break
+            data = payload[2:desc_len+2]
+            payload = payload[desc_len+2:]
+            if desc_id == 0x01:
+                server_id = str(data, 'utf-8')
+                print('[Time service] Server ID: {}'.format(server_id))
+            elif desc_id == 0x02 and len(data) == 8:
+                timestamp = datetime.datetime.utcfromtimestamp(struct.unpack('>Q', data)[0])
+                print('[Time service] Server time: {} UTC'.format(timestamp))
+            else:
+                print('[Time service] Unknown descriptor {:02x}'.format(desc_id))
