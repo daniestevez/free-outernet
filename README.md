@@ -50,6 +50,7 @@ Things that are not implemented/supported yet:
 
 To install all dependencies just run: `pip install -r requirements.txt`
 
+ * [crcmod](https://pypi.python.org/pypi/crcmod)
  * [zfec](https://pypi.python.org/pypi/zfec)
 
 ## Sample KISS files
