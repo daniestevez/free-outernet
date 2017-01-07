@@ -1,15 +1,15 @@
 # Copyright 2016 Daniel Estevez <daniel@destevez.net>.
-# 
+#
 # This is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3, or (at your option)
 # any later version.
-# 
+#
 # This software is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this software; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
@@ -44,7 +44,7 @@ class FileService:
     using the File() class
     """
     __block_header_len = 6
-    
+
     def __init__(self, router, files_path):
         """
         Initialize file service handler
@@ -143,7 +143,7 @@ class FileService:
         out.close()
         del self.__files[file_id]
         print('[File service] File reconstructed: {}'.format(f.path))
-        
+
 
 class File:
     """
@@ -194,7 +194,7 @@ class File:
         if self.__fec_blocks[n]:
             raise ValueError('File.push_fec(): FEC block already received!')
         self.__fec_blocks[n] = block
-    
+
     def reconstruct(self):
         """
         Try to reconstruct the file
@@ -213,7 +213,7 @@ class File:
                 fec = bytes().join(self.__fec_blocks)
                 print('Length of FEC data: {} bytes; File size: {} bytes'.format(len(fec), self.size))
             print('--------------------------------------------------------------------')
-        
+
         if None in self.__blocks:
             print('Some blocks are missing. Cannot reconstruct file {}'.format(self.path))
             return

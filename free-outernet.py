@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright 2016 Daniel Estevez <daniel@destevez.net>.
-# 
+#
 # This is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3, or (at your option)
@@ -11,7 +11,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this software; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
@@ -44,7 +44,7 @@ ETHERTYPE = b'\x8f\xff'
 
 def printMac(mac):
     return ('%02x:'* 5 + '%02x') % struct.unpack('B'*6, mac)
-    
+
 def printEthertype(ethertype):
     return hex(struct.unpack('>H', ethertype)[0])
 
@@ -105,7 +105,7 @@ def usage():
 \t-p, --port=PORT\t\tUDP port to listen (default {})
 \t    --host=HOST\t\tUDP host to listen (default ::, use 0.0.0.0 for IPv4 only)
 '''.format(UDP_PORT))
-    
+
 
 def main():
     try:
@@ -146,7 +146,7 @@ def main():
 
     timeservice.TimeService(router)
     files.FileService(router, output)
-    
+
     if kissinput:
         kissFile = open(kissinput, 'rb')
         kissDeframer = kiss.KISSDeframer()
