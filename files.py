@@ -43,7 +43,7 @@ class FileService:
     Gets packets from LDPRouter() and handles file reconstruction
     using the File() class
     """
-    __block_header_len = 4
+    __block_header_len = 6
     
     def __init__(self, router, files_path):
         """
@@ -53,9 +53,9 @@ class FileService:
           router (LDPRouter): LDP router to get packets from
           files_path (str): path to save files to
         """
-        router.register(self.__description_packet, 0x6900, 0x03c2)
-        router.register(self.__block_packet, 0x1800, 0x0000)
-        router.register(self.__fec_packet, 0xff00, 0x0000)
+        router.register(self.__description_packet, 0x69)
+        router.register(self.__block_packet, 0x18)
+        router.register(self.__fec_packet, 0xff)
 
         self.__files = dict()
         self.__files_path = files_path
@@ -69,8 +69,13 @@ class FileService:
         Args:
           packet (LDP): the LDP packet to handle
         """
-        start = packet.payload.find(b'<?xml')
-        f = File(packet.payload[start:])
+        cert_len = struct.unpack('>H', packet.payload[0:2])[0]
+        cert = packet.payload[2:2+cert_len]
+        signature_len = 256 # TODO: Deduce length from cert
+        signature = packet.payload[2+cert_len:2+cert_len+signature_len]
+        xml = packet.payload[2+cert_len+signature_len:]
+        # TODO: Verify hash matches the signature (RSA with SHA256)
+        f = File(xml)
         self.__files[f.id] = f
         print('[File service] New file announced: {} size {} bytes'.format(f.path, f.size))
 
@@ -84,7 +89,7 @@ class FileService:
         Args:
           packet (LDP): the LDP packet to handle
         """
-        file_id, block_number = struct.unpack('>HH', packet.payload[:self.__block_header_len])
+        file_id, block_number = struct.unpack('>IH', packet.payload[:self.__block_header_len])
         block = packet.payload[self.__block_header_len:]
         if file_id in self.__files:
             f = self.__files[file_id]
@@ -101,7 +106,7 @@ class FileService:
         Args:
           packet (LDP): the LDP packet to handle
         """
-        file_id, block_number = struct.unpack('>HH', packet.payload[:self.__block_header_len])
+        file_id, block_number = struct.unpack('>IH', packet.payload[:self.__block_header_len])
         block = packet.payload[self.__block_header_len:]
         if file_id in self.__files:
             f = self.__files[file_id]

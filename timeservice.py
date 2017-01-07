@@ -43,7 +43,7 @@ class TimeService:
         Args:
           router (LDPRouter): LDP router to get packets from
         """
-        router.register(self.__get, 0x8100, 0x0104)
+        router.register(self.__get, 0x81)
 
     def __get(self, packet):
         """
