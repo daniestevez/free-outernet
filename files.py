@@ -56,6 +56,8 @@ class FileService:
         router.register(self.__description_packet, 0x69)
         router.register(self.__block_packet, 0x18)
         router.register(self.__fec_packet, 0xff)
+        router.register(self.__signaling_packet, 0x42)
+        router.register(self.__signaling_packet, 0x5a)
 
         self.__files = dict()
         self.__files_path = files_path
@@ -111,6 +113,16 @@ class FileService:
         if file_id in self.__files:
             f = self.__files[file_id]
             f.push_fec(block, block_number)
+
+    def __signaling_packet(self, packet):
+        """
+        File signaling packet handler
+
+        Args:
+          packet (LDP): the LDP packet to handle
+        """
+        print('[File service] Received signaling information (not implemented yet)')
+        # TODO Update file dictionary based on signed, deflated XML
 
     def __try_reconstruct(self, file_id):
         """
