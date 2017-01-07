@@ -49,9 +49,9 @@ class OP:
         header = data[:self.__header_len]
         if len(header) < self.__header_len:
             raise ValueError('Malformed OP packet: too short')
-            
-        self.length, self.fragmentation, self.unknown, \
-          self.last_fragment, self.fragment_number = struct.unpack('>HccBB', header)
+
+        self.length, self.fragmentation, self.carousel_id, \
+          self.last_fragment, self.fragment_number = struct.unpack('>HBBBB', header)
         self.payload = data[self.__header_len : self.__header_len + self.length - 4]
 
 class OPDefragmenter:
@@ -107,7 +107,7 @@ class LDP:
 
     LDP is the L4 protocol of Outernet
     """
-    __header_len = 6
+    __header_len = 4
     __checksum_len = 4
 
     def __init__(self, data):
@@ -122,14 +122,16 @@ class LDP:
         """
         if len(data) < self.__header_len + self.__checksum_len:
             raise ValueError('Malformed LDP packet: too short')
-        header = data[:self.__header_len]
-        self.checksum = data[-self.__checksum_len:]
+        header = struct.unpack('>L', data[:self.__header_len])[0]
+        self.type = header >> 24
+        self.length = header & 0xffffff
+        if self.length > len(data):
+            raise ValueError('Malformed LDP packet: invalid length')
+
+        self.checksum = data[self.length-self.__checksum_len:self.length]
         # TODO implement checksum handling
 
-        self.a, self.length, self.b = struct.unpack('>HHH', header)
-        self.payload = data[self.__header_len : -self.__checksum_len]
-        if self.length != len(data):
-            raise ValueError('Malformed LDP packet: length field mismatch')
+        self.payload = data[self.__header_len:self.length-self.__checksum_len]
 
 class LDPRouter:
     """
@@ -153,19 +155,17 @@ class LDPRouter:
         Args:
           packet (LDP): packet to route
         """
-        key = (packet.a, packet.b)
-        if key not in self.__registrations:
-            print('Unknown routing for packet with a = {}, b = {}'.format(hex(packet.a), hex(packet.b)))
+        if packet.type not in self.__registrations:
+            print('Unknown routing for packet with type {:02x}'.format(packet.type))
         else:
-            self.__registrations[(packet.a, packet.b)](packet)
+            self.__registrations[packet.type](packet)
 
-    def register(self, fun, a, b):
+    def register(self, fun, type):
         """
         Register a packet handler
 
         Args:
           fun: packet handler function (it must take a single argument of type LDP)
-          a: a value of the packets to handle
-          b: b value of the packets to handle
+          type: type of the packets to handle
         """
-        self.__registrations[(a,b)] = fun
+        self.__registrations[type] = fun
