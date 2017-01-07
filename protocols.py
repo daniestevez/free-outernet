@@ -27,6 +27,7 @@ __email__ = 'daniel@destevez.net'
 
 import struct
 import zfec
+from crcmod.predefined import PredefinedCrc
 
 class OP:
     """
@@ -205,8 +206,10 @@ class LDP:
         if self.length > len(data):
             raise ValueError('Malformed LDP packet: invalid length')
 
-        self.checksum = data[self.length-self.__checksum_len:self.length]
-        # TODO implement checksum handling
+        crc = PredefinedCrc('crc-32-mpeg')
+        crc.update(data[:self.length])
+        if crc.crcValue != 0:
+            raise ValueError('Malformed LDP packet: invalid checksum')
 
         self.payload = data[self.__header_len:self.length-self.__checksum_len]
 

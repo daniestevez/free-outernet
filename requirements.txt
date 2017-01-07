@@ -1,2 +1,3 @@
+crcmod>=1.7,<2
 git+https://github.com/george-hopkins/pyutil@python3#egg=pyutil
 git+https://github.com/george-hopkins/zfec@python3#egg=zfec
