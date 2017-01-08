@@ -61,6 +61,7 @@ class FileService:
 
         self.__files = dict()
         self.__files_path = files_path
+        self.__last_file = None
 
     def __description_packet(self, packet):
         """
@@ -95,8 +96,11 @@ class FileService:
         block = packet.payload[self.__block_header_len:]
         if file_id in self.__files:
             f = self.__files[file_id]
+            if f is not self.__last_file and self.__last_file and self.__last_file.maybe_reconstructable:
+                self.__try_reconstruct(self.__last_file.id)
+            self.__last_file = f
             f.push_block(block, block_number)
-            if block_number + 1 == f.blocks:
+            if f.reconstructable:
                 self.__try_reconstruct(file_id)
 
     def __fec_packet(self, packet):
@@ -142,6 +146,8 @@ class FileService:
         out.write(contents)
         out.close()
         del self.__files[file_id]
+        if f is self.__last_file:
+            self.__last_file = None
         print('[File service] File reconstructed: {}'.format(f.path))
 
 
@@ -166,6 +172,7 @@ class File:
         self.fec = root.find('fec')
         if self.fec != None:
             self.fec = self.fec.text
+            self.__fec_matrix = None
         self.__blocks = [None] * self.blocks
         self.__fec_blocks = list()
 
@@ -177,9 +184,8 @@ class File:
           block (bytes): block contents
           n (int): block number
         """
-        if self.__blocks[n]:
-            raise ValueError('File.push_block(): block already received!')
-        self.__blocks[n] = block
+        if not self.__blocks[n]:
+            self.__blocks[n] = block
 
     def push_fec(self, block, n):
         """
@@ -195,30 +201,67 @@ class File:
             raise ValueError('File.push_fec(): FEC block already received!')
         self.__fec_blocks[n] = block
 
+    @property
+    def maybe_reconstructable(self):
+        """
+        Indicates whether a reconstruction seems feasible
+        """
+        blocks_received = self.blocks - self.__blocks.count(None)
+        if self.fec:
+            blocks_received += len(self.__fec_blocks) - self.__fec_blocks.count(None)
+        return blocks_received >= self.blocks
+
+    @property
+    def reconstructable(self):
+        """
+        Indicates whether a reconstruction is possible
+        """
+        return self.__blocks.count(None) == 0
+
     def reconstruct(self):
         """
         Try to reconstruct the file
 
         Returns the file contents (as bytes) if successful, None if not successful
         """
+        contents = []
+        if self.fec and self.fec.startswith('ldpc:'):
+            if not self.__fec_matrix:
+                fec_params = dict([tuple(kvp.split('=')) for kvp in self.fec[5:].split(',')])
+                self.__fec_matrix = self.__fec_init_matrix(fec_params)
+            blocks_remain = self.__blocks.count(None)
+            fec_indices = [i for i in range(len(self.__fec_blocks)) if self.__fec_blocks[i]]
+            while blocks_remain > 0:
+                blocks_repaired = 0
+                for fec_index in fec_indices[:]:
+                    row = self.__fec_matrix[fec_index]
+                    missing_indices = [i for i in row if not self.__blocks[i]]
+                    if len(missing_indices) > 1:
+                        continue
+                    fec_indices.remove(fec_index)
+                    if len(missing_indices) == 0:
+                        continue
+                    missing_index = missing_indices[0]
+                    accum = self.__fec_blocks[fec_index]
+                    for index in row:
+                        if index != missing_index:
+                            unpadded_size = min(self.block_size, self.size - self.block_size * index)
+                            symbol = self.__blocks[index][:unpadded_size] + b'\xff' * (self.block_size - unpadded_size)
+                            accum = bytes([accum[i] ^ symbol[i] for i in range(len(accum))])
+                    missing_unpadded_size = min(self.block_size, self.size - self.block_size * missing_index)
+                    self.__blocks[missing_index] = accum[:missing_unpadded_size]
+                    blocks_repaired += 1
+                    blocks_remain -= 1
+                if blocks_repaired == 0:
+                    print('Unable to reconstruct file {}'.format(self.path))
+                    return
+            contents = bytes().join(self.__blocks)
+        else: # No (supported) FEC
+            if None in self.__blocks:
+                print('Some blocks are missing. Cannot reconstruct file {}'.format(self.path))
+                return
+            contents = bytes().join(self.__blocks)
 
-        # TODO implement FEC for file reconstruction
-        if self.fec:
-            print('--------------------------------------------------------------------')
-            print('FEC debug info for file {} (FEC decoding not implemented yet)'.format(self.path))
-            print(self.fec)
-            if None in self.__fec_blocks:
-                print('Some FEC blocks are missing')
-            else:
-                fec = bytes().join(self.__fec_blocks)
-                print('Length of FEC data: {} bytes; File size: {} bytes'.format(len(fec), self.size))
-            print('--------------------------------------------------------------------')
-
-        if None in self.__blocks:
-            print('Some blocks are missing. Cannot reconstruct file {}'.format(self.path))
-            return
-
-        contents = bytes().join(self.__blocks)
         if len(contents) != self.size:
             print('File length mismatch. Cannot reconstruct file {}'.format(self.path))
             return
@@ -229,4 +272,67 @@ class File:
             print('File sha256sum mismatch. Cannot reconstruct file {}'.format(self.path))
             return
 
-        return bytes().join(self.__blocks)
+        return contents
+
+    def __fec_init_matrix(self, params):
+        """
+        Build a matrix for FEC
+
+        Args:
+          params (dict): Parameters used to encode the data
+        """
+        k = int(params['k'])
+        n = int(params['n'])
+        n1 = int(params['N1'])
+        seed = int(params['seed']) if 'seed' in params else 1
+        prng = self.__fec_prng(seed)
+        p_tbl = [ p % (n - k) for p in range(k * n1)]
+        matrix = [[] for _ in range(n - k)]
+        t = 0
+        for col in range(k):
+            for h in range(n1):
+                i = t
+                while i < k * n1 and col in matrix[p_tbl[i]]:
+                    i += 1
+                if i >= k * n1:
+                    while True:
+                        row = next(prng) % (n - k)
+                        if col not in matrix[row]:
+                            break
+                    matrix[row].append(col)
+                else:
+                    while True:
+                        p = next(prng) % (k * n1 - t) + t
+                        if col not in matrix[p_tbl[p]]:
+                            break
+                    matrix[p_tbl[p]].append(col)
+                    p_tbl[p] = p_tbl[t]
+                    t += 1
+        for row in range(n - k):
+            degree = len(matrix[row])
+            if degree == 0:
+                col = next(prng) % k
+                matrix[row].append(col)
+            if degree <= 1:
+                while True:
+                    col = next(prng) % k
+                    if col not in matrix[row]:
+                        break
+                matrix[row].append(col)
+        return matrix
+
+    def __fec_prng(self, seed):
+        """
+        Generate pseudo random numbers
+
+        Args:
+          seed (int): Seed
+        """
+        value = seed
+        while True:
+            value = ((16807 * (value >> 16) >> 15)
+                + ((16807 * (value >> 16) & 0x7fff) << 16)
+                + (16807 * (value & 0xffff)))
+            if value & 0x80000000:
+                value -= 0x7fffffff
+            yield value
