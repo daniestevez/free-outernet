@@ -325,14 +325,12 @@ class File:
         """
         Generate pseudo random numbers
 
+        Implementation of the Park-Miller random number generator
+
         Args:
           seed (int): Seed
         """
         value = seed
         while True:
-            value = ((16807 * (value >> 16) >> 15)
-                + ((16807 * (value >> 16) & 0x7fff) << 16)
-                + (16807 * (value & 0xffff)))
-            if value & 0x80000000:
-                value -= 0x7fffffff
+            value = (7**5 * value) % (2**31 - 1)
             yield value
