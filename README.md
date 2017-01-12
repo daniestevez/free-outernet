@@ -25,15 +25,12 @@ Outernet and prints the time packets. It also prints some interesting debug info
 
 Things that are not implemented/supported yet:
 
- * LDPC decoding (see below)
  * X.509 signature checking. The file announcements of the Outernet file service
    are signed with the Outernet X.509 certificate to prevent spoofing. This will
    not be implemented, as I have no interest in checking the signature. Perhaps
    some Amateur Radio operators or other people whish to use the Outernet
    protocols to exchange files, so it does not make sense for me to require
    that file announcements are signed.
- * Some weird Outernet frames which I do not know what they do. They do not seem
-   to do something very important, though.
  * Using the time packets to set the system time. I do not know how useful it
    is for most people. `ondd` does it, because it is designed to run standanlone
    without internet conetivity. If you have Internet connectivity it is much
@@ -57,35 +54,15 @@ To install all dependencies just run: `pip install -r requirements.txt`
 
 You can use some [sample KISS files](https://drive.google.com/open?id=0B2pPGQkeEAfdbXFZNThCb1BLMzg) for testing.
 
-## What is this LDPC decoding thing?
+## About LDPC decoding for files
 
-LDPC is the only important thing that `ondd` does and that is not implemented in
-free-outernet. It is a Forward Error Correction code designed to permit to
-recover a complete file even if you have some missing blocks which could not be
-received. Without LDPC decoding, you need to receive all the blocks of the file
-or you cannot recover the file.
+LDPC decoding has been [implemented by George
+Hopkins](https://github.com/daniestevez/free-outernet/pull/4) by reverse
+engineering `ondd`.
 
-If you have a good uninterrupted signal, there is no reason why you should fail
-to receive some of the blocks, so you will have all the file blocks when the
-file transmission ends and LDPC decoding is not necessary. This has being tested
-with real world recordings.
+Previously, this was not implemented, so `free-outernet` needed to receive all
+the blocks for a file to be able to reconstruct it correctly. Now, it can use
+the LDPC to "fill in" the missing packets in case some of them were lost.
 
-However, if your signal is not very good or objects get in the way of your
-receiver ocassionally, you will have a few blocks missing. `ondd` is able to use
-LDPC decoding to recover the whole file, while free-outernet is unable to do so.
-
-Of course, LDPC or some other Forward Error Correction is a very good idea to
-have on a file broadcast service such as this. What I mean is that it is
-possible to have a fully functional receiver without LDPC decoding, and this is
-what free-outernet does.
-
-The problem with LDPC codes is that there are many different LDPC codes (and
-Outernet uses several different codes depending on file size and so on). Also,
-implementing an LDPC decoder is not trivial. Unless I manage to find an
-open-source library that implements the LDPC codes used on Outernet or I get
-some help from somebody with more experience with LDPC codes, implementing LDPC
-decoding in free-outernet is low on my priority list.
-
-For now, free-outernet prints some debug information about the LDPC codes to
-help anyone interested in this get started in trying to reverse engineer the
-LDPC codes used in Outernet.
+The performance of `free-outernet` regarding FEC and LDPC decoding should
+be now the same as the performance of `ondd`.
