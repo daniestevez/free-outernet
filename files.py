@@ -197,8 +197,8 @@ class File:
         """
         if (len(self.__fec_blocks) <= n):
             self.__fec_blocks.extend([None]*(n - len(self.__fec_blocks) + 1))
-        if self.__fec_blocks[n]:
-            raise ValueError('File.push_fec(): FEC block already received!')
+        if self.__fec_blocks[n] and self.__fec_blocks[n] != block:
+            print('[File service] Overwriting FEC block {} in {} with a block having different contents'.format(n, self.path))
         self.__fec_blocks[n] = block
 
     @property
