@@ -45,7 +45,7 @@ Things that are not implemented/supported yet:
 
 ## Dependencies
 
-To install all dependencies just run: `pip install -r requirements.txt`
+To install all dependencies just run: `pip3 install -r requirements.txt`
 
  * [crcmod](https://pypi.python.org/pypi/crcmod)
  * [zfec](https://pypi.python.org/pypi/zfec)
