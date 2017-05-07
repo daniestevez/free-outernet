@@ -120,6 +120,9 @@ class PartialLDP:
         n = k + self.fec_count
         decoder = zfec.Decoder(k, n)
         sharenums = list(self.__fragments.keys())
+        if len(sharenums) != k:
+            print("[ERROR] Unexpected number of fragments. k = {}, sharenums = {}".format(k, sharenums))
+            return
         return b''.join(decoder.decode([self.__fragments[s] for s in sharenums], sharenums))
 
 class OPDefragmenter:
