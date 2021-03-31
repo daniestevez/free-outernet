@@ -31,7 +31,7 @@ import struct
 
 UDP_PORT = 8280
 MCAST_GRP = '239.1.2.3' # if you want IPv4 only
-UDP_HOST = '239.1.2.3'
+UDP_HOST = '0.0.0.0'
 
 BUFSIZE = 4096
 
@@ -85,10 +85,10 @@ def getSocket():
             print('Socket error', msg)
             continue
         try:
-            sock.bind((MCAST_GRP, UDP_PORT))
+            sock.bind((UDP_HOST, UDP_PORT))
         except OSError as msg:
             print('Bind error', msg)
-            s.close()
+            sock.close()
             continue
         break
     return sock
