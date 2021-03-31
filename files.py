@@ -74,7 +74,7 @@ class FileService:
         """
         cert_len = struct.unpack('>H', packet.payload[0:2])[0]
         cert = packet.payload[2:2+cert_len]
-        signature_len = 256 # TODO: Deduce length from cert
+        signature_len = 128 # TODO: Deduce length from cert
         signature = packet.payload[2+cert_len:2+cert_len+signature_len]
         xml = packet.payload[2+cert_len+signature_len:]
         # TODO: Verify hash matches the signature (RSA with SHA256)

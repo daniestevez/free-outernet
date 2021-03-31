@@ -35,7 +35,7 @@ class OP:
 
     OP is the L3 protocol of Outernet
     """
-    __header_len = 6
+    __header_len = 5
 
     def __init__(self, data):
         """
@@ -53,7 +53,7 @@ class OP:
             raise ValueError('Malformed OP packet: too short')
 
         self.length, self.fragment_type, self.carousel_id, \
-          self.last_fragment, self.fragment_index = struct.unpack('>HBBBB', header)
+          self.last_fragment, self.fragment_index = struct.unpack('>BBBBB', header)
         self.payload = data[self.__header_len : self.__header_len + self.length - 4]
 
 class PartialLDP:
@@ -164,7 +164,7 @@ class OPDefragmenter:
             if not ldp.frag_count:
                 ldp.frag_count = packet.last_fragment + 1
             ldp.next_index = packet.fragment_index + 1
-            ldp.push_data(packet.fragment_index, packet.payload + b'\xff' * (ldp.frag_size - len(packet.payload)))
+            ldp.push_data(packet.fragment_index, packet.payload)
             if packet.fragment_type == 0x3c and ldp.complete:
                 decoded = ldp.decode()
                 ldp.reset()

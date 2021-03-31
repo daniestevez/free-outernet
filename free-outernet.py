@@ -29,9 +29,9 @@ import getopt
 import socket
 import struct
 
-UDP_PORT = 10000
-# Use UDP_HOST = '0.0.0.0' if you want IPv4 only
-UDP_HOST = '::'
+UDP_PORT = 8280
+MCAST_GRP = '239.1.2.3' # if you want IPv4 only
+UDP_HOST = '239.1.2.3'
 
 BUFSIZE = 4096
 
@@ -55,13 +55,13 @@ def processFrame(frame):
     srcmac = frame[6:12]
     dstmac = frame[:6]
     ethertype = frame[12:14]
-    if dstmac != BROADCAST_MAC or ethertype != ETHERTYPE:
-        print('Received interesting Ethernet frame with src MAC {}, dst MAC {} and ethertype {}'.format(printMac(srcmac), printMac(dstmac), printEthertype(ethertype)))
-    if srcmac != groundstationMac:
-        print('Receiving Ethernet frames from groundstation with MAC {}'.format(printMac(srcmac)))
-        groundstationMac = srcmac
+    # if dstmac != BROADCAST_MAC or ethertype != ETHERTYPE:
+    #     print('Received interesting Ethernet frame with src MAC {}, dst MAC {} and ethertype {}'.format(printMac(srcmac), printMac(dstmac), printEthertype(ethertype)))
+    # if srcmac != groundstationMac:
+    #     print('Receiving Ethernet frames from groundstation with MAC {}'.format(printMac(srcmac)))
+    #     groundstationMac = srcmac
     try:
-        packet = opDefragmenter.push(protocols.OP(frame[14:]))
+        packet = opDefragmenter.push(protocols.OP(frame))
     except ValueError:
         return
     if not packet:
@@ -74,23 +74,24 @@ def processFrame(frame):
     router.route(packet)
 
 def getSocket():
-    s = None
+    sock = None
     for res in socket.getaddrinfo(UDP_HOST, UDP_PORT, socket.AF_UNSPEC, socket.SOCK_DGRAM, 0,
                    socket.AI_PASSIVE):
         af, socktype, proto, canonname, sa = res
         try:
-            s = socket.socket(af, socktype, proto)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         except OSError as msg:
             print('Socket error', msg)
             continue
         try:
-            s.bind(sa)
+            sock.bind((MCAST_GRP, UDP_PORT))
         except OSError as msg:
             print('Bind error', msg)
             s.close()
             continue
         break
-    return s
+    return sock
 
 def usage():
     print('Usage: {} [OPTIONS]'.format(sys.argv[0]))
@@ -155,6 +156,8 @@ def main():
             processFrame(frame)
     else:
         s = getSocket()
+        mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
+        s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
         while True:
             try:
                 frame = s.recv(BUFSIZE)
