@@ -1,6 +1,10 @@
 # free-outernet
 Free Software Outernet receiver
 
+**Note:** This software is now maintained by [Othernet](https://othernet.is/) as
+[open-ondd](https://github.com/Othernet-Project/open-ondd). The new open-ondd has
+been updated to work with the current Othernet data broadcast protocols.
+
 This is a Free Software (Open Source) receiver for
 [Outernet](http://outernet.is/) designed to work with the
 [gr-outernet](https://github.com/daniestevez/gr-outernet) GNUradio Outernet
