@@ -56,7 +56,9 @@ To install all dependencies just run: `pip3 install -r requirements.txt`
 
 ## Sample KISS files
 
-You can use some [sample KISS files](https://drive.google.com/open?id=0B2pPGQkeEAfdbXFZNThCb1BLMzg) for testing.
+You can use some
+[sample KISS files](https://drive.google.com/file/d/0B2pPGQkeEAfdbXFZNThCb1BLMzg/view?usp=sharing&resourcekey=0-itJm_p_plfZzA3kBHzjAVQ)
+for testing.
 
 ## About LDPC decoding for files
 
